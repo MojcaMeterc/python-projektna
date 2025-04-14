@@ -1,67 +1,50 @@
-import matplotlib.pyplot as plt
-import requests 
+import requests
 import re
 
-class Borec:
-    def __init__(self, ime, priimek, vzdevek = None, visina = None,\
-                 teza = None, doseg = None):
-        self._ime = ime
-        self._priimek = priimek
-        self._vzdevek = vzdevek
-        self._visina = visina
-        self._teza = teza
-        self._doseg = doseg
+url = 'http://ufcstats.com/statistics/fighters?char=a&page=all'
+html = requests.get(url).text
 
-    def __str__(self):
-        return f'{self._ime}, {self._priimek}, ({self._ime}): teža: {self._teza}, višina: {self._visina}, doseg: {self._doseg}'
+rows = re.findall(r'<tr class="b-statistics__table-row">(.*?)</tr>', html, re.DOTALL)
 
-def borci_osebni_podatki():
-    url = "http://ufcstats.com/statistics/fighters?char=a&page=all"
-    url = requests.get(url).text
+fighters = []
 
-    podatki_borcev = re.findall(r'<a href="http://ufcstats.com/fighter-details/(.*?)" class="b-link b-link_style_black">(.*?)</a>', url, re.DOTALL)
+for row in rows:
+    columns = re.findall(r'<td.*?>(.*?)</td>', row, re.DOTALL)
 
-    vrednosti = [v for _, v in podatki_borcev]
-    osebe = []
-    for i in range(0, len(vrednosti), 3):
-        oseba = {'ime': vrednosti[i],
-                 'priimek': vrednosti[i+1],
-                 'vzdevek': vrednosti[i+2]}
-        
-        osebe.append(oseba)
-    return osebe
+    smooth = []
+     
+    for column in columns:
+        link = re.search(r'>([^<]+)<', column)
 
-def borci_drugi_podatki():
-    url = "http://ufcstats.com/statistics/fighters?char=a&page=all"
-    url = requests.get(url).text
-    podatki = re.findall(r'<td class="b-statistics__table-col"\s*(.*?)\s*</td>', url, re.DOTALL)
-    print(podatki)
+        if link:
+            # ko iščeš tekst med > <, nas zanima samo vsebima in ne ostale oznake <a> zato uporabimo group(1)
+            smooth.append(link.group(1).strip())
+        else:
+            smooth.append(column.strip())
+    if len(smooth) >= 10:
+        # tuki dopolni kaj je w, l, d z besedo ker jz nevem kaj je
+        # pa ce kj ni pomembn odstran recmo reach al pa stance k tud nevem kaj je
+        fighter = { 'First name': smooth[0],
+                   'Last name': smooth[1],
+                   'Nickname': smooth[2],
+                   'Height': smooth[3],
+                   'Weight': smooth[4],
+                   'Doseg roke': smooth[5] if smooth[5] != '--' else None,
+                   'Drža': smooth[6] if smooth[6] != '--' else None,
+                   'Zmage': int(smooth[7]),
+                   'Poraz': int(smooth[8]),
+                   'Izenačenje': int(smooth[9])}
+        fighters.append(fighter)
 
+def find_fighter(name):
+    '''uporabnik mora vnesti imez malimi tiskanimi črkami'''
+    for fighter in fighters:
+        full_name = f'{fighter["First name"]} {fighter["Last name"]}'.lower()
+        if name == fighter['First name'].lower() or name == fighter['Last name'].lower() or name == full_name:
+            return fighter
+    return 'Fighter not found.'
 
-def zdruzi():
-    osebe = borci_osebni_podatki()
-    visina, teza, doseg = borci_drugi_podatki()
-    
+ime = 'mansur abdul-malik'
+print(find_fighter(ime))
 
-    borci = []
-    for i in range(len(osebe)):
-        ime = osebe[i]['ime']
-        priimek = osebe[i]['priimek']
-        vzdevek = osebe[i].get('vzdevek', None)
-
-        visina_borca = visina[i] if i < len(visina) else None
-        teza_borca = teza[i] if i < len(teza) else None
-        doseg_borca = doseg[i] if i < len(doseg) else None
-
-        borec = Borec(ime, priimek, vzdevek, visina_borca, teza_borca, doseg_borca)
-        borci.append(borec)
-        
-    return borci
-
-borci_drugi_podatki()
-
-    
-
-
-
-
+# primeri imen, če uporabnik ne pozna nobenega: nariman, abe, aguilar, omari, rostem akman...
