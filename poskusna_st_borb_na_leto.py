@@ -14,25 +14,33 @@ def pridobi_dogodke(html):
     
     for blok in bloks:
         url_match = re.search(r'<a href="(http.*?)"', blok)
-        datum_match = re.search(r'<span class="b-statistics_date">\s*(.*?)\s</span>', blok)
+        datum_match = re.search(r'<span class="b-statistics__date">\s*(.*?)\s</span>', blok, re.DOTALL)
     
         if url_match and datum_match:
-            url = url_match.strip()
-            datum = datum_match.strip()
+            url = url_match.group(1).strip()
+            datum = datum_match.group(1).strip()
  
             try:
-                year = datetime.strptime(datum.strip(), "%B %d, %Y")
-                events.append({'url': url.strip(), 'leto': year})
+                datum = datetime.strptime(datum, "%B %d, %Y")
+                events.append({'url': url, 'leto': datum})
             except ValueError:
                 continue
-    print(events) 
+          
     return events
 
 
-def število_borb(url):
-    html = pridobi_html(url)
-    fights = re.findall(r'<a class="b-flag b-flag_style_green"', html, re.DOTALL)
-    return len(fights)
+def število_borb():
+    base_url = 'http://ufcstats.com/statistics/events/completed?page=all'
+    html = pridobi_html(base_url)
+    podatki = pridobi_dogodke(html)
+    borbe_na_leto = []
+    for slovar in podatki:
+
+
+    #fights = re.findall(r'<a class="b-flag b-flag_style_green"', html, re.DOTALL)
+    
+    print(podatki)
+    
 
 def povprecje_na_leto():
     base_url = 'http://ufcstats.com/statistics/events/completed?page=all'
@@ -61,13 +69,15 @@ def povprecje_na_leto():
     
     return years, averages
 
-years, averages = povprecje_na_leto()
+število_borb()
 
-plt.figure(figsize=(10,5))
-plt.bar(years, averages, color='skyblue')
-plt.title('Povprečno število na dogodek po letih')
-plt.xlabel('Leta')
-plt.ylabel('Št. borb na dogodek')
-plt.xticks(years, rotation=45)
-plt.show()
+#years, averages = povprecje_na_leto()
+
+#plt.figure(figsize=(10,5))
+#plt.bar(years, averages, color='skyblue')
+#plt.title('Povprečno število na dogodek po letih')
+#plt.xlabel('Leta')
+#plt.ylabel('Št. borb na dogodek')
+#plt.xticks(years, rotation=45)
+#plt.show()
 
